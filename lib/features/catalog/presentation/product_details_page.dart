@@ -8,6 +8,7 @@ import 'prescription_request.dart';
 import '../data/catalog_data.dart';
 import '../models/product.dart';
 import 'prescription_scan_page.dart';
+import '../../reminders/presentation/add_reminder_sheet.dart';
 
 class ProductDetailsPage extends StatefulWidget {
   const ProductDetailsPage({super.key, required this.product});
@@ -62,6 +63,15 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Set a reminder',
+            onPressed: () => showAddReminderSheet(
+              context,
+              medicineName: widget.product.name,
+              productId: widget.product.id,
+            ),
+            icon: const Icon(Icons.alarm_add_outlined),
+          ),
           IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border)),
         ],
       ),

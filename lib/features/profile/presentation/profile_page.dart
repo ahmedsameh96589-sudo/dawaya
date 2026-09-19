@@ -19,6 +19,7 @@ import 'favorites_page.dart';
 import '../../notifications/data/notification_repository.dart';
 import '../data/profile_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../reminders/presentation/reminders_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -302,6 +303,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                                 Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) => const FavoritesPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _MenuItem(
+                              icon: Icons.alarm_outlined,
+                              label: 'Medicine reminders',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const RemindersPage(),
                                   ),
                                 );
                               },

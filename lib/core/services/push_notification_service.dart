@@ -15,6 +15,8 @@ import '../config/firebase_options.dart';
 import 'auth_session.dart';
 import '../../app/providers.dart';
 import '../../features/notifications/data/notification_repository.dart';
+import '../../features/reminders/presentation/reminders_page.dart';
+import '../../features/orders/presentation/order_details_page.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -31,6 +33,10 @@ class PushNotificationService {
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+
+  /// The shared local-notification plugin, so features such as medicine
+  /// reminders schedule through the same initialized instance.
+  static FlutterLocalNotificationsPlugin get localNotifications => _localNotifications;
 
   static bool _initialized = false;
   static bool _firebaseReady = false;
@@ -298,8 +304,20 @@ class PushNotificationService {
     }
 
     if (type == 'order_update' || refModel == 'Order') {
+      final orderId = data['orderId'] ?? data['refId'] ?? '';
       navigator.push(
-        MaterialPageRoute<void>(builder: (_) => const OrdersPage()),
+        MaterialPageRoute<void>(
+          builder: (_) => orderId.isNotEmpty
+              ? OrderDetailsPage(orderId: orderId)
+              : const OrdersPage(),
+        ),
+      );
+      return;
+    }
+
+    if (type == 'reminder') {
+      navigator.push(
+        MaterialPageRoute<void>(builder: (_) => const RemindersPage()),
       );
     }
   }
