@@ -1,3 +1,5 @@
+import '../../../core/config/app_config.dart';
+
 class Product {
   const Product({
     required this.id,
@@ -34,7 +36,7 @@ class Product {
   bool get isOutOfStock => stock <= 0;
 
   factory Product.fromJson(Map<String, dynamic> json) {
-    const String baseHostUrl = 'http://10.0.2.2:5001';
+    final String baseHostUrl = AppConfig.apiHost;
     final List<dynamic> rawImages = json['images'] as List<dynamic>? ?? [];
     final String updatedAt = json['updatedAt'] as String? ?? '';
     String addCacheBust(String url) {

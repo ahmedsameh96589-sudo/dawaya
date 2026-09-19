@@ -383,6 +383,7 @@ class _ChatPageState extends State<ChatPage> {
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.network(
                                           attachmentUrl,
+                                          headers: ApiService.uploadHeaders,
                                           height: 160,
                                           width: double.infinity,
                                           fit: BoxFit.cover,

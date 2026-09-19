@@ -81,8 +81,6 @@ class GoogleAuthResult {
 class ApiService {
   static String get baseUrl => AppConfig.apiBaseUrl;
   static String get baseHostUrl => AppConfig.apiHost;
-  static const String newsApiKey = 'c95bdaa2833743c0bba5cb3c029f6bf3';
-  static const String newsBaseUrl = 'https://newsapi.org/v2';
 
   static String _extractMessage(http.Response response) {
     try {
@@ -107,6 +105,10 @@ class ApiService {
     }
     return headers;
   }
+
+  /// Headers for loading private uploads (prescriptions, chat attachments),
+  /// which the backend only serves to signed-in users and doctors.
+  static Map<String, String> get uploadHeaders => _authHeaders(json: false);
 
   static String resolveUploadUrl(String path) {
     if (path.isEmpty) return '';
@@ -133,11 +135,12 @@ class ApiService {
   }
 
   static Future<List<Product>> fetchMedicines({String? search}) async {
-    final String query = (search == null || search.isEmpty)
-        ? ''
-        : '?search=$search';
+    final uri = Uri.parse('$baseUrl/medicines').replace(
+      queryParameters:
+          (search == null || search.isEmpty) ? null : {'search': search},
+    );
     final response = await http
-        .get(Uri.parse('$baseUrl/medicines$query'))
+        .get(uri)
         .timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {
@@ -837,10 +840,12 @@ class ApiService {
 
       // ── Save to AuthSession so every service can use it ──────
       if (token != null && token.isNotEmpty) {
-        AuthSession.token = token;
-        AuthSession.userId = userId;
-        AuthSession.role = role;
-        AuthSession.name = name;
+        await AuthSession.start(
+          token: token,
+          userId: userId,
+          role: role,
+          name: name,
+        );
       }
 
       return VerifyOtpResult(
@@ -878,10 +883,12 @@ class ApiService {
       final role = user['role'] as String?;
       final name = user['name'] as String?;
 
-      AuthSession.token = token;
-      AuthSession.userId = userId;
-      AuthSession.role = role ?? 'user';
-      AuthSession.name = name;
+      await AuthSession.start(
+        token: token,
+        userId: userId,
+        role: role ?? 'user',
+        name: name,
+      );
 
       return GoogleAuthResult(
         token: token,
@@ -987,22 +994,15 @@ class ApiService {
 
   static Future<List<NewsItem>> fetchNews({String language = 'en'}) async {
     final normalizedLanguage = language.toLowerCase() == 'ar' ? 'ar' : 'en';
-    final uri = Uri.parse('$newsBaseUrl/everything').replace(
-      queryParameters: {
-        'q': 'medicine OR health OR pharmacy',
-        'language': normalizedLanguage,
-        'pageSize': '20',
-        'apiKey': newsApiKey,
-      },
+    final uri = Uri.parse('$baseUrl/news').replace(
+      queryParameters: {'language': normalizedLanguage},
     );
-    final response = await http
-        .get(uri, headers: {'X-Api-Key': newsApiKey})
-        .timeout(const Duration(seconds: 10));
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
 
     if (response.statusCode == 200) {
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-      final List<dynamic> list = body['articles'] as List<dynamic>;
+      final body = _decode(response);
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      final list = data['articles'] as List<dynamic>? ?? [];
       return list
           .map((e) => NewsItem.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -1010,5 +1010,4 @@ class ApiService {
     throw Exception('Failed to load news');
   }
 
-  static Future<void> saveCardDetails(Map<String, String> cardData) async {}
 }

@@ -53,7 +53,11 @@ flutter pub get
 flutter run
 ```
 
-The app expects the API at `http://localhost:5001/api` (`http://10.0.2.2:5001/api` on the Android emulator). You can change it in `lib/core/config/app_config.dart`. For push notification setup, see [FIREBASE_PUSH_SETUP.md](FIREBASE_PUSH_SETUP.md).
+By default the app expects the API at `http://localhost:5001/api` (`http://10.0.2.2:5001/api` on the Android emulator). To point it at a deployed backend:
+
+```bash
+flutter run --dart-define=API_HOST=https://your-api.example.com
+``` For push notification setup, see [FIREBASE_PUSH_SETUP.md](FIREBASE_PUSH_SETUP.md).
 
 ---
 

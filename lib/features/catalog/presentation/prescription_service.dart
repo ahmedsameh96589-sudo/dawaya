@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dawayaa/core/services/auth_session.dart';
 import 'package:http/http.dart' as http;
+
+import '../../../core/config/app_config.dart';
 import 'dart:convert';
 import '../presentation/prescription_request.dart';
 
@@ -10,7 +12,7 @@ class PrescriptionService {
   PrescriptionService._();
   static final PrescriptionService instance = PrescriptionService._();
 
-  static const String _baseUrl = 'http://10.0.2.2:5001/api';
+  static String get _baseUrl => AppConfig.apiBaseUrl;
 
   // ── BUG FIX: Removed the separate _token field and setToken().
   // PrescriptionService now reads directly from AuthSession.token,

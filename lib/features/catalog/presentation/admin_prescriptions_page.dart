@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/services/api_services.dart';
 import '../../../core/theme/app_colors.dart';
 import 'prescription_service.dart';
 import 'prescription_request.dart';
@@ -144,7 +145,8 @@ class _PrescriptionCardState extends State<_PrescriptionCard> {
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.network(
-              req.imageUrl,
+              ApiService.resolveUploadUrl(req.imageUrl),
+              headers: ApiService.uploadHeaders,
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,

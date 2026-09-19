@@ -1,3 +1,5 @@
+import '../../../core/config/app_config.dart';
+
 class Category {
   const Category({
     required this.id,
@@ -25,7 +27,7 @@ class Category {
   }
 
   static String _resolveImageUrl(String image, String categoryName) {
-    const String baseHostUrl = 'http://localhost:5001';
+    final String baseHostUrl = AppConfig.apiHost;
     final normalizedImage = image.trim();
 
     if (normalizedImage.isEmpty || normalizedImage == 'default-category.png') {
