@@ -83,7 +83,7 @@ class _PaymentPageState extends State<PaymentPage> {
         title: const Text('Order confirmed'),
         content: Text(
           _selectedMethod == 'visa'
-              ? 'Your order has been placed successfully. Paid with Visa card ending in ${_savedCard!['last4']}.'
+              ? 'Your order has been placed. Demo payment approved for the card ending in ${_savedCard!['last4']} (no money was charged).'
               : 'Your order has been placed successfully. Cash on delivery.',
         ),
         actions: [

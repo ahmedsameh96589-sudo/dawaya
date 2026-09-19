@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/api_services.dart';
 
-/// A page that collects Visa / credit-card details and saves them
-/// via [ApiService.saveCardDetails].
+/// Demo card-entry screen for the checkout flow.
 ///
-/// Returns a [Map<String, String>] with the keys:
+/// No real payment gateway is connected yet, so the full card number and CVV
+/// are only validated on the device and never stored or sent anywhere.
+/// A real integration would hand them straight to the gateway's SDK
+/// (Paymob / Stripe), which returns a token for the backend.
+///
+/// Pops a [Map<String, String>] with only non-sensitive display data:
 ///   - 'cardHolder'
-///   - 'cardNumber'   (full 16-digit string, no spaces)
 ///   - 'last4'        (last 4 digits)
 ///   - 'expiry'       (MM/YY)
-///   - 'cvv'
-///
-/// to the previous route when the user taps "Save card".
 class VisaDetailsPage extends StatefulWidget {
   const VisaDetailsPage({super.key, this.existingCard});
 
@@ -38,9 +37,9 @@ class _VisaDetailsPageState extends State<VisaDetailsPage> {
     super.initState();
     final c = widget.existingCard;
     _holderCtrl = TextEditingController(text: c?['cardHolder'] ?? '');
-    _numberCtrl = TextEditingController(text: c?['cardNumber'] ?? '');
+    _numberCtrl = TextEditingController();
     _expiryCtrl = TextEditingController(text: c?['expiry'] ?? '');
-    _cvvCtrl    = TextEditingController(text: c?['cvv'] ?? '');
+    _cvvCtrl    = TextEditingController();
   }
 
   @override
@@ -79,14 +78,9 @@ class _VisaDetailsPageState extends State<VisaDetailsPage> {
       final rawNumber = _numberCtrl.text.replaceAll(' ', '');
       final cardData = {
         'cardHolder': _holderCtrl.text.trim(),
-        'cardNumber': rawNumber,
         'last4'     : rawNumber.substring(rawNumber.length - 4),
         'expiry'    : _expiryCtrl.text.trim(),
-        'cvv'       : _cvvCtrl.text.trim(),
       };
-
-      // Save to your backend / Firebase
-      await ApiService.saveCardDetails(cardData);
 
       if (!mounted) return;
       Navigator.of(context).pop(cardData); // return data to PaymentPage
@@ -130,7 +124,9 @@ class _VisaDetailsPageState extends State<VisaDetailsPage> {
                 expiry: _expiryCtrl.text,
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
+              const _DemoNotice(),
+              const SizedBox(height: 24),
 
               // ── Cardholder name ───────────────────────────────
               _FieldLabel('Cardholder name'),
@@ -570,6 +566,35 @@ class _ExpiryFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: formatted,
       selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+class _DemoNotice extends StatelessWidget {
+  const _DemoNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF5C26B)),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline, color: Color(0xFFB7791F), size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Demo payment: no money is charged and your card details never '
+              'leave this phone. Try the test card 4242 4242 4242 4242.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
