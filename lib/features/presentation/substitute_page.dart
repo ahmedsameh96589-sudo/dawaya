@@ -1,23 +1,21 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import '../../core/theme/app_colors.dart';
-import '../../../core/services/api_services.dart';
 import '../catalog/models/product.dart';
 import '../cart/presentation/cart_page.dart';
 import '../chat/presentation/consultations_page.dart';
 import '../profile/presentation/profile_page.dart';
+import '../catalog/data/catalog_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SubstitutePage extends StatefulWidget {
+class SubstitutePage extends ConsumerStatefulWidget {
   const SubstitutePage({super.key});
 
   @override
-  State<SubstitutePage> createState() => _SubstitutePageState();
+  ConsumerState<SubstitutePage> createState() => _SubstitutePageState();
 }
 
-class _SubstitutePageState extends State<SubstitutePage> {
+class _SubstitutePageState extends ConsumerState<SubstitutePage> {
   Product? _selectedProduct;
   Product? _substituteProduct;
   List<Product> _products = [];
@@ -38,7 +36,7 @@ class _SubstitutePageState extends State<SubstitutePage> {
       _error = null;
     });
     try {
-      final products = await ApiService.fetchMedicines();
+      final products = await ref.read(catalogRepositoryProvider).fetchMedicines();
       setState(() {
         _products = products;
         _loading = false;
@@ -59,7 +57,7 @@ class _SubstitutePageState extends State<SubstitutePage> {
       _loadingAlternative = true;
     });
     try {
-      final alternatives = await _fetchAlternatives(product.id);
+      final alternatives = await ref.read(catalogRepositoryProvider).fetchAlternatives(product.id);
       final String ingredient = product.activeIngredient.trim().toLowerCase();
       final List<Product> filtered = alternatives.where((alt) {
         if (alt.id == product.id) return false;
@@ -86,31 +84,6 @@ class _SubstitutePageState extends State<SubstitutePage> {
         SnackBar(content: Text(e.toString())),
       );
     }
-  }
-
-  Future<List<Product>> _fetchAlternatives(String medicineId) async {
-    final response = await http
-        .get(
-          Uri.parse('${ApiService.baseUrl}/medicines/$medicineId/alternatives'),
-        )
-        .timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-      final Map<String, dynamic> data =
-          body['data'] as Map<String, dynamic>? ?? {};
-      final List<dynamic> list = data['alternatives'] as List<dynamic>? ?? [];
-      return list
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-
-    final Map<String, dynamic> body =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    final String message =
-        body['message'] as String? ?? 'Failed to load alternatives';
-    throw Exception(message);
   }
 
   /// Opens a bottom sheet with a searchable product grid.
@@ -561,16 +534,16 @@ Widget _buildSelectedSection() {
 // Bottom-sheet widget: searchable product picker
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ProductPickerSheet extends StatefulWidget {
+class _ProductPickerSheet extends ConsumerStatefulWidget {
   const _ProductPickerSheet({required this.products});
 
   final List<Product> products;
 
   @override
-  State<_ProductPickerSheet> createState() => _ProductPickerSheetState();
+  ConsumerState<_ProductPickerSheet> createState() => _ProductPickerSheetState();
 }
 
-class _ProductPickerSheetState extends State<_ProductPickerSheet> {
+class _ProductPickerSheetState extends ConsumerState<_ProductPickerSheet> {
   String _query = '';
 
   @override

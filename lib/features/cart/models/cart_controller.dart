@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../catalog/models/product.dart';
+import '../data/cart_repository.dart';
 import 'cart_model.dart';
 
 class CartController extends ChangeNotifier {
+  CartController(this._repository);
+
+  final CartRepository _repository;
   final Map<String, CartItem> _items = <String, CartItem>{};
   bool _isSyncing = false;
   bool _loaded = false;
@@ -50,7 +53,7 @@ class CartController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final items = await ApiService.fetchCart();
+      final items = await _repository.fetchCart();
       _setItems(items);
       _loaded = true;
     } catch (e) {
@@ -70,7 +73,7 @@ class CartController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final items = await ApiService.addToCart(
+      final items = await _repository.addToCart(
         medicineId: product.id,
         quantity: 1,
       );
@@ -90,7 +93,7 @@ class CartController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final items = await ApiService.removeFromCart(product.id);
+      final items = await _repository.removeFromCart(product.id);
       _setItems(items);
     } catch (e) {
       _error = e.toString();
@@ -118,7 +121,7 @@ class CartController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final items = await ApiService.updateCartItem(
+      final items = await _repository.updateCartItem(
         medicineId: product.id,
         quantity: existing.quantity - 1,
       );
@@ -138,7 +141,7 @@ class CartController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      final items = await ApiService.clearCart();
+      final items = await _repository.clearCart();
       _setItems(items);
     } catch (e) {
       _error = e.toString();

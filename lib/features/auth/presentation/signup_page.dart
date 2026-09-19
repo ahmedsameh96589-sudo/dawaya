@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/google_auth_service.dart';
 import 'otp_verification_screen.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class SignUpPage extends StatefulWidget {
+class SignUpPage extends ConsumerStatefulWidget {
   const SignUpPage({super.key});
 
   @override
-  State<SignUpPage> createState() => _SignUpPageState();
+  ConsumerState<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController nameController = TextEditingController();
@@ -33,7 +34,7 @@ class _SignUpPageState extends State<SignUpPage> {
 
     setState(() => isLoading = true);
     try {
-      final userId = await ApiService.register(
+      final userId = await ref.read(authRepositoryProvider).register(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
         phone: phoneController.text.trim(),

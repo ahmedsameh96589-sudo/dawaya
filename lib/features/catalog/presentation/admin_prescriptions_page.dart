@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
-import 'prescription_service.dart';
+import '../data/prescription_repository.dart';
 import 'prescription_request.dart';
+import '../../../core/network/uploads.dart';
 
-class AdminPrescriptionsPage extends StatefulWidget {
+class AdminPrescriptionsPage extends ConsumerStatefulWidget {
   const AdminPrescriptionsPage({super.key});
 
   @override
-  State<AdminPrescriptionsPage> createState() => _AdminPrescriptionsPageState();
+  ConsumerState<AdminPrescriptionsPage> createState() => _AdminPrescriptionsPageState();
 }
 
-class _AdminPrescriptionsPageState extends State<AdminPrescriptionsPage> {
+class _AdminPrescriptionsPageState extends ConsumerState<AdminPrescriptionsPage> {
   List<PrescriptionRequest> _requests = [];
   bool _loading = true;
 
@@ -24,7 +25,7 @@ class _AdminPrescriptionsPageState extends State<AdminPrescriptionsPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final list = await PrescriptionService.instance.fetchPending();
+      final list = await ref.read(prescriptionRepositoryProvider).fetchPending();
       setState(() => _requests = list);
     } catch (e) {
       if (!mounted) return;
@@ -78,16 +79,16 @@ class _AdminPrescriptionsPageState extends State<AdminPrescriptionsPage> {
   }
 }
 
-class _PrescriptionCard extends StatefulWidget {
+class _PrescriptionCard extends ConsumerStatefulWidget {
   const _PrescriptionCard({required this.request, required this.onReviewed});
   final PrescriptionRequest request;
   final VoidCallback onReviewed;
 
   @override
-  State<_PrescriptionCard> createState() => _PrescriptionCardState();
+  ConsumerState<_PrescriptionCard> createState() => _PrescriptionCardState();
 }
 
-class _PrescriptionCardState extends State<_PrescriptionCard> {
+class _PrescriptionCardState extends ConsumerState<_PrescriptionCard> {
   final _noteController = TextEditingController();
   bool _loading = false;
 
@@ -96,10 +97,10 @@ class _PrescriptionCardState extends State<_PrescriptionCard> {
     try {
       final note = _noteController.text.trim();
       if (approve) {
-        await PrescriptionService.instance
+        await ref.read(prescriptionRepositoryProvider)
             .approve(widget.request.id, note: note.isEmpty ? null : note);
       } else {
-        await PrescriptionService.instance
+        await ref.read(prescriptionRepositoryProvider)
             .reject(widget.request.id, note: note.isEmpty ? null : note);
       }
       if (!mounted) return;
@@ -145,8 +146,8 @@ class _PrescriptionCardState extends State<_PrescriptionCard> {
             borderRadius:
                 const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.network(
-              ApiService.resolveUploadUrl(req.imageUrl),
-              headers: ApiService.uploadHeaders,
+              Uploads.resolve(req.imageUrl),
+              headers: Uploads.headers,
               height: 200,
               width: double.infinity,
               fit: BoxFit.cover,

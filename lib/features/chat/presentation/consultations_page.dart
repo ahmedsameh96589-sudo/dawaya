@@ -2,21 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../models/consultation.dart';
 import '../widgets/doctor_rating_badge.dart';
 import 'chat_page.dart';
 import 'doctors_page.dart';
+import '../../../core/network/uploads.dart';
+import '../data/chat_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ConsultationsPage extends StatefulWidget {
+class ConsultationsPage extends ConsumerStatefulWidget {
   const ConsultationsPage({super.key});
 
   @override
-  State<ConsultationsPage> createState() => _ConsultationsPageState();
+  ConsumerState<ConsultationsPage> createState() => _ConsultationsPageState();
 }
 
-class _ConsultationsPageState extends State<ConsultationsPage> {
+class _ConsultationsPageState extends ConsumerState<ConsultationsPage> {
   List<Consultation> _consultations = [];
   bool _loading = true;
   String? _error;
@@ -46,7 +48,7 @@ class _ConsultationsPageState extends State<ConsultationsPage> {
       });
     }
     try {
-      final data = await ApiService.fetchMyConsultations();
+      final data = await ref.read(chatRepositoryProvider).fetchMyConsultations();
       if (!mounted) return;
       setState(() {
         _consultations = data;
@@ -145,7 +147,7 @@ class _ConsultationsPageState extends State<ConsultationsPage> {
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final item = _consultations[index];
-                          final avatarUrl = ApiService.resolveUploadUrl(
+                          final avatarUrl = Uploads.resolve(
                             item.displayAvatarUrl(
                               viewingAsDoctor: isDoctor,
                             ),

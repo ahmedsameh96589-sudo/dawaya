@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/services/api_services.dart';
 import '../models/checkout_address.dart';
 import '../models/order_request.dart';
 import 'cart_provider.dart';
 import 'visa_details_page.dart';
+import '../../orders/data/order_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PaymentPage extends StatefulWidget {
+class PaymentPage extends ConsumerStatefulWidget {
   const PaymentPage({super.key, required this.address});
 
   final CheckoutAddress address;
 
   @override
-  State<PaymentPage> createState() => _PaymentPageState();
+  ConsumerState<PaymentPage> createState() => _PaymentPageState();
 }
 
-class _PaymentPageState extends State<PaymentPage> {
+class _PaymentPageState extends ConsumerState<PaymentPage> {
   bool _isLoading = false;
 
   // cash | visa
@@ -50,7 +51,7 @@ class _PaymentPageState extends State<PaymentPage> {
             : 'Cash on delivery',
       );
 
-      await ApiService.placeOrder(request);
+      await ref.read(orderRepositoryProvider).placeOrder(request);
 
       if (!mounted) return;
 

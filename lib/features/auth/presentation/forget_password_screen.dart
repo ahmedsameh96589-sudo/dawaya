@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
 import 'otp_verification_screen.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ForgetPasswordScreen extends StatefulWidget {
+class ForgetPasswordScreen extends ConsumerStatefulWidget {
   const ForgetPasswordScreen({super.key});
 
   @override
-  State<ForgetPasswordScreen> createState() =>
+  ConsumerState<ForgetPasswordScreen> createState() =>
       _ForgetPasswordScreenState();
 }
 
 class _ForgetPasswordScreenState
-    extends State<ForgetPasswordScreen> {
+    extends ConsumerState<ForgetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController emailController =
@@ -31,7 +32,7 @@ class _ForgetPasswordScreenState
     setState(() => isLoading = true);
 
     try {
-      final result = await ApiService.forgotPassword(
+      final result = await ref.read(authRepositoryProvider).forgotPassword(
         email: emailController.text.trim(),
       );
 

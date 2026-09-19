@@ -13,21 +13,22 @@ import 'substitute_page.dart';
 import '../cart/presentation/cart_page.dart';
 import '../chat/presentation/consultations_page.dart';
 import '../profile/presentation/profile_page.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../auth/presentation/scan_prescription_screen.dart';
+import '../catalog/data/catalog_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key, required this.title});
 
   final String title;
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   void _onSearchChanged(String value) {
     _searchDebounce?.cancel();
@@ -66,8 +67,8 @@ class _HomePageState extends State<HomePage> {
     });
     try {
       final results = await Future.wait([
-        ApiService.fetchCategories(),
-        ApiService.fetchMedicines(),
+        ref.read(catalogRepositoryProvider).fetchCategories(),
+        ref.read(catalogRepositoryProvider).fetchMedicines(),
       ]);
       setState(() {
         _categories = results[0] as List<Category>;
@@ -84,7 +85,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadProducts({String? search}) async {
     try {
-      final products = await ApiService.fetchMedicines(search: search);
+      final products = await ref.read(catalogRepositoryProvider).fetchMedicines(search: search);
       setState(() {
         _products = products;
         _error = null;

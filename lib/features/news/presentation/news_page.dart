@@ -1,65 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_localization.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/theme/app_colors.dart';
-import '../models/news_item.dart';
+import '../../../core/widgets/async_states.dart';
+import '../data/news_repository.dart';
 
-class NewsPage extends StatefulWidget {
+class NewsPage extends ConsumerWidget {
   const NewsPage({super.key});
 
   @override
-  State<NewsPage> createState() => _NewsPageState();
-}
-
-class _NewsPageState extends State<NewsPage> {
-  List<NewsItem> _items = [];
-  bool _loading = true;
-  String? _error;
-  String? _lastLoadedLanguage;
-  bool _didInitialLoad = false;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_didInitialLoad) return;
-    _didInitialLoad = true;
-    _loadNews(AppLocalizer.of(context).languageCode);
-  }
-
-  Future<void> _loadNews(String language) async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final items = await ApiService.fetchNews(language: language);
-      setState(() {
-        _items = items;
-        _loading = false;
-        _lastLoadedLanguage = language;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizer.of(context);
-    if (_lastLoadedLanguage != l10n.languageCode && !_loading) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadNews(l10n.languageCode);
-      });
-    }
+    // Keyed by language, so switching language loads (and caches) that feed.
+    final provider = newsProvider(l10n.languageCode);
+    final news = ref.watch(provider);
+    Future<void> refresh() => ref.refresh(provider.future);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -68,30 +25,19 @@ class _NewsPageState extends State<NewsPage> {
         foregroundColor: Colors.black,
         elevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
-                      const SizedBox(height: 12),
-                      Text(l10n.t('serverError')),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () => _loadNews(l10n.languageCode),
-                        child: Text(l10n.t('retry')),
-                      ),
-                    ],
-                  ),
-                )
+      body: RefreshIndicator(
+        onRefresh: refresh,
+        child: news.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (_, __) => ErrorRetryView(error: l10n.t('serverError'), onRetry: refresh),
+          data: (items) => items.isEmpty
+              ? const EmptyStateView(icon: Icons.article_outlined, title: 'No news right now')
               : ListView.separated(
                   padding: const EdgeInsets.all(20),
-                  itemCount: _items.length,
+                  itemCount: items.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
-                    final item = _items[index];
+                    final item = items[index];
                     final date = item.publishedAt.toLocal();
                     final dateText =
                         "${date.year}-${date.month.toString().padLeft(2, "0")}-${date.day.toString().padLeft(2, "0")}";
@@ -178,6 +124,8 @@ class _NewsPageState extends State<NewsPage> {
                     );
                   },
                 ),
+        ),
+      ),
     );
   }
 }

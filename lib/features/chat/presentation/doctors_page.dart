@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/api_services.dart';
 import '../models/doctor_profile.dart';
 import '../widgets/doctor_rating_badge.dart';
 import 'chat_page.dart';
+import '../../../core/network/uploads.dart';
+import '../data/chat_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class DoctorsPage extends StatefulWidget {
+class DoctorsPage extends ConsumerStatefulWidget {
   const DoctorsPage({super.key});
 
   @override
-  State<DoctorsPage> createState() => _DoctorsPageState();
+  ConsumerState<DoctorsPage> createState() => _DoctorsPageState();
 }
 
-class _DoctorsPageState extends State<DoctorsPage> {
+class _DoctorsPageState extends ConsumerState<DoctorsPage> {
   List<DoctorProfile> _doctors = [];
   bool _loading = true;
   String? _error;
@@ -29,7 +31,7 @@ class _DoctorsPageState extends State<DoctorsPage> {
       _error = null;
     });
     try {
-      final doctors = await ApiService.fetchDoctors();
+      final doctors = await ref.read(chatRepositoryProvider).fetchDoctors();
       setState(() {
         _doctors = doctors;
         _loading = false;
@@ -45,7 +47,7 @@ class _DoctorsPageState extends State<DoctorsPage> {
   Future<void> _startConsultation(DoctorProfile doctor) async {
     try {
       final consultation =
-          await ApiService.startConsultation(doctorId: doctor.id);
+          await ref.read(chatRepositoryProvider).startConsultation(doctorId: doctor.id);
       if (!mounted) return;
       Navigator.push(
         context,
@@ -92,7 +94,7 @@ class _DoctorsPageState extends State<DoctorsPage> {
                   itemBuilder: (context, index) {
                     final doctor = _doctors[index];
                     final avatarUrl =
-                        ApiService.resolveUploadUrl(doctor.avatarUrl);
+                        Uploads.resolve(doctor.avatarUrl);
                     return InkWell(
                       onTap: () => _startConsultation(doctor),
                       borderRadius: BorderRadius.circular(16),

@@ -2,23 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../models/chat_message.dart';
 import '../models/consultation.dart';
 import '../widgets/doctor_rating_badge.dart';
 import 'consultation_rating_dialog.dart';
+import '../../../core/network/uploads.dart';
+import '../data/chat_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ChatPage extends StatefulWidget {
+class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key, required this.consultationId});
 
   final String consultationId;
 
   @override
-  State<ChatPage> createState() => _ChatPageState();
+  ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends State<ChatPage> {
+class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Consultation? _consultation;
@@ -51,7 +53,7 @@ class _ChatPageState extends State<ChatPage> {
       _error = null;
     });
     try {
-      final consultation = await ApiService.fetchConsultation(
+      final consultation = await ref.read(chatRepositoryProvider).fetchConsultation(
         widget.consultationId,
       );
       setState(() {
@@ -99,12 +101,12 @@ class _ChatPageState extends State<ChatPage> {
 
     try {
       final updated = submitOnClose
-          ? await ApiService.closeConsultation(
+          ? await ref.read(chatRepositoryProvider).closeConsultation(
               consultationId: widget.consultationId,
               rating: result.rating,
               comment: result.comment,
             )
-          : await ApiService.rateConsultation(
+          : await ref.read(chatRepositoryProvider).rateConsultation(
               consultationId: widget.consultationId,
               rating: result.rating,
               comment: result.comment,
@@ -144,7 +146,7 @@ class _ChatPageState extends State<ChatPage> {
 
     if (isDoctor) {
       try {
-        final updated = await ApiService.closeConsultation(
+        final updated = await ref.read(chatRepositoryProvider).closeConsultation(
           consultationId: widget.consultationId,
           reason: 'Closed by doctor',
         );
@@ -165,7 +167,7 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() => _sending = true);
     try {
-      final message = await ApiService.sendConsultationMessage(
+      final message = await ref.read(chatRepositoryProvider).sendMessage(
         consultationId: widget.consultationId,
         text: text,
       );
@@ -191,7 +193,7 @@ class _ChatPageState extends State<ChatPage> {
 
     setState(() => _sending = true);
     try {
-      final message = await ApiService.sendConsultationMessage(
+      final message = await ref.read(chatRepositoryProvider).sendMessage(
         consultationId: widget.consultationId,
         imagePath: picked.path,
       );
@@ -211,7 +213,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _refreshMessages({bool silent = false}) async {
     try {
       final previousStatus = _consultation?.status;
-      final consultation = await ApiService.fetchConsultation(
+      final consultation = await ref.read(chatRepositoryProvider).fetchConsultation(
         widget.consultationId,
       );
       if (!mounted) return;
@@ -352,7 +354,7 @@ class _ChatPageState extends State<ChatPage> {
                             final isMine = isDoctor
                                 ? message.senderType == 'doctor'
                                 : message.senderType == 'user';
-                            final attachmentUrl = ApiService.resolveUploadUrl(
+                            final attachmentUrl = Uploads.resolve(
                               message.attachmentUrl,
                             );
                             return Align(
@@ -383,7 +385,7 @@ class _ChatPageState extends State<ChatPage> {
                                         borderRadius: BorderRadius.circular(12),
                                         child: Image.network(
                                           attachmentUrl,
-                                          headers: ApiService.uploadHeaders,
+                                          headers: Uploads.headers,
                                           height: 160,
                                           width: double.infinity,
                                           fit: BoxFit.cover,

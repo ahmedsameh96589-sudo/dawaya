@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/services/google_auth_service.dart';
 import '../../../core/services/push_notification_service.dart';
@@ -8,15 +7,17 @@ import '../../presentation/home_page.dart';
 import 'forget_password_screen.dart';
 import 'otp_verification_screen.dart';
 import 'signup_page.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -29,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => isLoading = true);
     try {
-      final result = await ApiService.login(
+      final result = await ref.read(authRepositoryProvider).login(
         email: emailController.text.trim(),
         password: passwordController.text,
       );
@@ -57,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (result.needsVerification) {
-        await ApiService.resendOtp(
+        await ref.read(authRepositoryProvider).resendOtp(
           userId: result.userId,
           purpose: 'verification',
         );

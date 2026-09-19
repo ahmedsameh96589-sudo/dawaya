@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_localization.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/presentation/login_page.dart';
@@ -17,15 +16,18 @@ import '../../../core/services/push_notification_service.dart';
 import '../models/user_profile.dart';
 import 'edit_profile_page.dart';
 import 'favorites_page.dart';
+import '../../notifications/data/notification_repository.dart';
+import '../data/profile_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
+class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingObserver {
   Future<UserProfile>? _profileFuture;
   int _notificationUnreadCount = 0;
   Timer? _notificationPollTimer;
@@ -39,7 +41,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (_isLoggedIn) {
-      _profileFuture = ApiService.fetchMyProfile();
+      _profileFuture = ref.read(profileRepositoryProvider).fetchMyProfile();
       _loadNotificationBadge();
       _startNotificationPolling();
     }
@@ -70,7 +72,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _loadNotificationBadge() async {
     try {
-      final feed = await ApiService.fetchNotifications(limit: 1);
+      final feed = await ref.read(notificationRepositoryProvider).fetchNotifications(limit: 1);
       if (!mounted) return;
       if (feed.unreadCount != _notificationUnreadCount) {
         setState(() => _notificationUnreadCount = feed.unreadCount);
@@ -80,7 +82,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _refreshProfile() async {
     setState(() {
-      _profileFuture = ApiService.fetchMyProfile();
+      _profileFuture = ref.read(profileRepositoryProvider).fetchMyProfile();
     });
     await Future.wait([_profileFuture!, _loadNotificationBadge()]);
   }
@@ -124,7 +126,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       );
     }
 
-    _profileFuture ??= ApiService.fetchMyProfile();
+    _profileFuture ??= ref.read(profileRepositoryProvider).fetchMyProfile();
 
     return Scaffold(
       backgroundColor: AppColors.surface,

@@ -8,13 +8,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../app/app.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/notifications/models/app_notification.dart';
 import '../../features/orders/presentation/orders_page.dart';
 import '../config/firebase_options.dart';
-import 'api_services.dart';
 import 'auth_session.dart';
+import '../../app/providers.dart';
+import '../../features/notifications/data/notification_repository.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -101,7 +101,7 @@ class PushNotificationService {
         debugPrint('🔔 Push: FCM token is null (check google-services.json / permissions).');
         return;
       }
-      await ApiService.registerFcmToken(token);
+      await appContainer.read(notificationRepositoryProvider).registerFcmToken(token);
       debugPrint('🔔 Push: FCM token registered with backend.');
     } catch (e) {
       debugPrint('🔔 Push: FCM token registration failed: $e');
@@ -130,7 +130,7 @@ class PushNotificationService {
     }
 
     try {
-      final feed = await ApiService.fetchNotifications(limit: 20);
+      final feed = await appContainer.read(notificationRepositoryProvider).fetchNotifications(limit: 20);
       _processPolledNotifications(feed.notifications);
     } catch (e) {
       debugPrint('🔔 Push: polling fallback error: $e');
@@ -172,7 +172,7 @@ class PushNotificationService {
   static Future<void> _registerToken(String token) async {
     if (!AuthSession.isLoggedIn) return;
     try {
-      await ApiService.registerFcmToken(token);
+      await appContainer.read(notificationRepositoryProvider).registerFcmToken(token);
       debugPrint('🔔 Push: FCM token refresh uploaded.');
     } catch (e) {
       debugPrint('🔔 Push: FCM token refresh upload failed: $e');
@@ -281,7 +281,7 @@ class PushNotificationService {
     final consultationId =
         data['consultationId'] ?? data['refId'] ?? '';
 
-    final navigator = DawayaaApp.rootNavigatorKey.currentState;
+    final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
 
     if (type == 'consultation_update' ||
