@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../../core/localization/app_localization.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/presentation/login_page.dart';
@@ -17,29 +16,34 @@ import '../../../core/services/push_notification_service.dart';
 import '../models/user_profile.dart';
 import 'edit_profile_page.dart';
 import 'favorites_page.dart';
+import '../../notifications/data/notification_repository.dart';
+import '../data/profile_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../reminders/presentation/reminders_page.dart';
+import '../../../core/network/realtime_client.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
+class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingObserver {
   Future<UserProfile>? _profileFuture;
   int _notificationUnreadCount = 0;
   Timer? _notificationPollTimer;
   static const Duration _notificationPollInterval = Duration(seconds: 5);
 
   bool get _isLoggedIn =>
-      AuthSession.token != null && AuthSession.token!.isNotEmpty;
+      AuthSession.isLoggedIn;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (_isLoggedIn) {
-      _profileFuture = ApiService.fetchMyProfile();
+      _profileFuture = ref.read(profileRepositoryProvider).fetchMyProfile();
       _loadNotificationBadge();
       _startNotificationPolling();
     }
@@ -70,7 +74,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _loadNotificationBadge() async {
     try {
-      final feed = await ApiService.fetchNotifications(limit: 1);
+      final feed = await ref.read(notificationRepositoryProvider).fetchNotifications(limit: 1);
       if (!mounted) return;
       if (feed.unreadCount != _notificationUnreadCount) {
         setState(() => _notificationUnreadCount = feed.unreadCount);
@@ -80,7 +84,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
 
   Future<void> _refreshProfile() async {
     setState(() {
-      _profileFuture = ApiService.fetchMyProfile();
+      _profileFuture = ref.read(profileRepositoryProvider).fetchMyProfile();
     });
     await Future.wait([_profileFuture!, _loadNotificationBadge()]);
   }
@@ -124,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       );
     }
 
-    _profileFuture ??= ApiService.fetchMyProfile();
+    _profileFuture ??= ref.read(profileRepositoryProvider).fetchMyProfile();
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -305,6 +309,17 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                               },
                             ),
                             _MenuItem(
+                              icon: Icons.alarm_outlined,
+                              label: 'Medicine reminders',
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const RemindersPage(),
+                                  ),
+                                );
+                              },
+                            ),
+                            _MenuItem(
                               icon: Icons.credit_card,
                               label: l10n.t('paymentMethods'),
                               onTap: () {
@@ -335,6 +350,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                         child: ElevatedButton.icon(
                           onPressed: () {
                             PushNotificationService.stopInAppNotificationPolling();
+                            ref.read(realtimeClientProvider).disconnect();
                             AuthSession.clear();
                             CartProvider.of(context).resetLocal();
                             Navigator.of(context).pushAndRemoveUntil(
@@ -427,7 +443,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                 onTap: () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute<void>(
-                      builder: (_) => const HomePage(title: 'Dawayaa'),
+                      builder: (_) => const HomePage(title: 'Dawaya'),
                     ),
                     (route) => false,
                   );

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ResetPasswordScreen extends StatefulWidget {
+class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({
     super.key,
     required this.userId,
@@ -12,10 +13,10 @@ class ResetPasswordScreen extends StatefulWidget {
   final String resetToken;
 
   @override
-  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
@@ -33,7 +34,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
     setState(() => isLoading = true);
     try {
-      await ApiService.resetPassword(
+      await ref.read(authRepositoryProvider).resetPassword(
         userId: widget.userId,
         resetToken: widget.resetToken,
         newPassword: passwordController.text,

@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../core/localization/app_localization.dart';
 import '../core/theme/app_theme.dart';
-import '../features/cart/models/cart_controller.dart';
+import 'providers.dart';
 import '../features/cart/presentation/cart_provider.dart';
 import '../features/auth/presentation/splash_onboarding.dart';
 import '../features/auth/presentation/login_page.dart';
@@ -16,21 +16,20 @@ class DawayaaApp extends StatelessWidget {
   const DawayaaApp({super.key});
 
   static final AppLocaleController _localeController = AppLocaleController();
-  static final GlobalKey<NavigatorState> rootNavigatorKey =
-      GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return CartProvider(
-      controller: CartController(),
+      controller: appContainer.read(cartControllerProvider),
       child: AppLocaleScope(
         controller: _localeController,
         child: ValueListenableBuilder<Locale>(
           valueListenable: _localeController,
           builder: (context, locale, _) {
             return MaterialApp(
-              title: 'Dawayaa',
+              title: 'Dawaya',
               navigatorKey: rootNavigatorKey,
+              scaffoldMessengerKey: rootMessengerKey,
               theme: AppTheme.light,
               debugShowCheckedModeBanner: false,
               locale: locale,
@@ -51,7 +50,7 @@ class DawayaaApp extends StatelessWidget {
                 '/signup': (context) => const SignUpPage(),
                 '/forget': (context) => const ForgetPasswordScreen(),
                 '/scan': (context) => const ScanPrescriptionScreen(),
-                '/home': (context) => const HomePage(title: 'Dawayaa'),
+                '/home': (context) => const HomePage(title: 'Dawaya'),
               },
             );
           },

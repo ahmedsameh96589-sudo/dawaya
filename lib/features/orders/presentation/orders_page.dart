@@ -1,83 +1,19 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
-import '../models/order_summary.dart';
+import '../../../core/widgets/async_states.dart';
 import '../../auth/presentation/login_page.dart';
+import '../data/order_repository.dart';
+import '../models/order_summary.dart';
+import 'order_details_page.dart';
 
-class OrdersPage extends StatefulWidget {
+class OrdersPage extends ConsumerWidget {
   const OrdersPage({super.key});
 
   @override
-  State<OrdersPage> createState() => _OrdersPageState();
-}
-
-class _OrdersPageState extends State<OrdersPage> {
-  Future<List<OrderSummary>>? _ordersFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    final bool isLoggedIn =
-        AuthSession.token != null && AuthSession.token!.isNotEmpty;
-    if (isLoggedIn) {
-      _ordersFuture = _fetchOrders();
-    }
-  }
-
-  Future<List<OrderSummary>> _fetchOrders() {
-    return _fetchOrdersFromApi();
-  }
-
-  Future<List<OrderSummary>> _fetchOrdersFromApi() async {
-    final token = AuthSession.token;
-    if (token == null || token.isEmpty) {
-      return <OrderSummary>[];
-    }
-    final uri = Uri.parse('${ApiService.baseUrl}/orders')
-        .replace(queryParameters: {'page': '1', 'limit': '20'});
-    final response = await http.get(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    ).timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> body =
-          jsonDecode(response.body) as Map<String, dynamic>;
-      final Map<String, dynamic> data =
-          body['data'] as Map<String, dynamic>? ?? {};
-      final List<dynamic> orders = data['orders'] as List<dynamic>? ?? [];
-      return orders
-          .map((e) => OrderSummary.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-
-    final Map<String, dynamic> body =
-        jsonDecode(response.body) as Map<String, dynamic>;
-    final String message =
-        body['message'] as String? ?? 'Failed to load orders';
-    throw Exception(message);
-  }
-
-  Future<void> _refresh() async {
-    setState(() {
-      _ordersFuture = _fetchOrders();
-    });
-    await _ordersFuture;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isLoggedIn =
-        AuthSession.token != null && AuthSession.token!.isNotEmpty;
-
-    if (!isLoggedIn) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!AuthSession.isLoggedIn) {
       return Scaffold(
         appBar: AppBar(title: const Text('My Orders')),
         body: Center(
@@ -89,9 +25,7 @@ class _OrdersPageState extends State<OrdersPage> {
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LoginPage(),
-                    ),
+                    MaterialPageRoute<void>(builder: (_) => const LoginPage()),
                   );
                 },
                 child: const Text('Login'),
@@ -102,51 +36,29 @@ class _OrdersPageState extends State<OrdersPage> {
       );
     }
 
-    _ordersFuture ??= _fetchOrders();
+    final orders = ref.watch(myOrdersProvider);
+    Future<void> refresh() => ref.refresh(myOrdersProvider.future);
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Orders')),
       body: RefreshIndicator(
-        onRefresh: _refresh,
-        child: FutureBuilder<List<OrderSummary>>(
-          future: _ordersFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  Text(snapshot.error.toString()),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _refresh,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              );
-            }
-            final orders = snapshot.data ?? [];
-            if (orders.isEmpty) {
-              return ListView(
-                padding: const EdgeInsets.all(20),
-                children: const [
-                  Text('No orders yet.'),
-                ],
-              );
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: orders.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                return _OrderCard(order: order);
-              },
-            );
-          },
+        onRefresh: refresh,
+        child: orders.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => ErrorRetryView(error: error, onRetry: refresh),
+          data: (orders) => orders.isEmpty
+              ? const EmptyStateView(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'No orders yet',
+                  message: 'Medicines you order will show up here.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: orders.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) =>
+                      _OrderCard(order: orders[index]),
+                ),
         ),
       ),
     );
@@ -162,40 +74,64 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String created =
         '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => OrderDetailsPage(orderId: order.id),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  order.orderNumber.isEmpty ? 'Order' : order.orderNumber,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 10,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    order.orderNumber.isEmpty ? 'Order' : order.orderNumber,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              _StatusBadge(status: order.status),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text('Items: ${order.itemCount}'),
-          const SizedBox(height: 4),
-          Text('Total: ${order.total.toStringAsFixed(0)} EGP'),
-          const SizedBox(height: 4),
-          Text('Date: $created'),
-        ],
+                _StatusBadge(status: order.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Items: ${order.itemCount}'),
+            const SizedBox(height: 4),
+            Text('Total: ${order.total.toStringAsFixed(0)} EGP'),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(child: Text('Date: $created')),
+                const Text(
+                  'Track order',
+                  style: TextStyle(
+                    color: Color(0xFF0B2A7D),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Color(0xFF0B2A7D),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

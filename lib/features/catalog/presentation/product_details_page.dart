@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../cart/presentation/cart_provider.dart';
-import 'prescription_service.dart';
+import '../data/prescription_repository.dart';
 import 'prescription_request.dart';
 import '../data/catalog_data.dart';
 import '../models/product.dart';
 import 'prescription_scan_page.dart';
+import '../../reminders/presentation/add_reminder_sheet.dart';
 
 class ProductDetailsPage extends StatefulWidget {
   const ProductDetailsPage({super.key, required this.product});
@@ -61,6 +63,15 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Set a reminder',
+            onPressed: () => showAddReminderSheet(
+              context,
+              medicineName: widget.product.name,
+              productId: widget.product.id,
+            ),
+            icon: const Icon(Icons.alarm_add_outlined),
+          ),
           IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border)),
         ],
       ),
@@ -185,17 +196,16 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
 
   // ── Live status banner — polls every 5 s via Stream ───────────────────────
   Widget _buildStatusBanner(String requestId) {
-    return StreamBuilder<PrescriptionRequest?>(
-      stream: PrescriptionService.instance.watchRequest(requestId),
-      builder:
-          (BuildContext context, AsyncSnapshot<PrescriptionRequest?> snap) {
+    return Consumer(
+      builder: (BuildContext context, WidgetRef ref, _) {
+            final AsyncValue<PrescriptionRequest?> snap =
+                ref.watch(prescriptionStatusProvider(requestId));
             // Still loading first result
-            if (!snap.hasData &&
-                snap.connectionState == ConnectionState.waiting) {
+            if (!snap.hasValue) {
               return const LinearProgressIndicator();
             }
 
-            final PrescriptionRequest? req = snap.data;
+            final PrescriptionRequest? req = snap.value;
             if (req == null) return const SizedBox.shrink();
 
             switch (req.status) {
@@ -309,11 +319,11 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
     }
 
     // Step 2 — prescription submitted → react to live status
-    return StreamBuilder<PrescriptionRequest?>(
-      stream: PrescriptionService.instance.watchRequest(_requestId!),
-      builder:
-          (BuildContext context, AsyncSnapshot<PrescriptionRequest?> snap) {
-            final PrescriptionStatus? status = snap.data?.status;
+    return Consumer(
+      builder: (BuildContext context, WidgetRef ref, _) {
+            final AsyncValue<PrescriptionRequest?> snap =
+                ref.watch(prescriptionStatusProvider(_requestId!));
+            final PrescriptionStatus? status = snap.value?.status;
 
             // ✅ Approved — enable the real Add to Cart
             if (status == PrescriptionStatus.approved) {

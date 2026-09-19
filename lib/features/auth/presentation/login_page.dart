@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/services/google_auth_service.dart';
 import '../../../core/services/push_notification_service.dart';
@@ -8,15 +7,17 @@ import '../../presentation/home_page.dart';
 import 'forget_password_screen.dart';
 import 'otp_verification_screen.dart';
 import 'signup_page.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -29,7 +30,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => isLoading = true);
     try {
-      final result = await ApiService.login(
+      final result = await ref.read(authRepositoryProvider).login(
         email: emailController.text.trim(),
         password: passwordController.text,
       );
@@ -38,15 +39,18 @@ class _LoginPageState extends State<LoginPage> {
 
       // Doctor accounts skip OTP (separate collection, direct JWT from backend)
       if (result.skipOtp && result.token != null) {
-        AuthSession.token = result.token;
-        AuthSession.userId = result.userId;
-        AuthSession.role = result.role ?? 'doctor';
-        AuthSession.name = result.name;
+        await AuthSession.start(
+          token: result.token!,
+          userId: result.userId,
+          role: result.role ?? 'doctor',
+          name: result.name,
+        );
+        if (!mounted) return;
         CartProvider.of(context).loadFromServer(force: true);
         await PushNotificationService.registerTokenWithBackend();
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+          MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
           (route) => false,
         );
         _showMessage(result.message);
@@ -54,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (result.needsVerification) {
-        await ApiService.resendOtp(
+        await ref.read(authRepositoryProvider).resendOtp(
           userId: result.userId,
           purpose: 'verification',
         );
@@ -287,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  const HomePage(title: 'Dawayaa'),
+                                  const HomePage(title: 'Dawaya'),
                             ),
                           );
                         },

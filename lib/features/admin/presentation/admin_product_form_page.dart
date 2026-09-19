@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../catalog/models/category.dart';
 import '../../catalog/models/product.dart';
+import '../../catalog/data/catalog_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AdminProductFormPage extends StatefulWidget {
+class AdminProductFormPage extends ConsumerStatefulWidget {
   const AdminProductFormPage({
     super.key,
     this.product,
@@ -15,10 +16,10 @@ class AdminProductFormPage extends StatefulWidget {
   final List<Category> categories;
 
   @override
-  State<AdminProductFormPage> createState() => _AdminProductFormPageState();
+  ConsumerState<AdminProductFormPage> createState() => _AdminProductFormPageState();
 }
 
-class _AdminProductFormPageState extends State<AdminProductFormPage> {
+class _AdminProductFormPageState extends ConsumerState<AdminProductFormPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController priceController = TextEditingController();
@@ -84,7 +85,7 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
   Future<void> _loadCategories() async {
     setState(() => _loadingCategories = true);
     try {
-      final categories = await ApiService.fetchCategories();
+      final categories = await ref.read(catalogRepositoryProvider).fetchCategories();
       if (!mounted) return;
       setState(() {
         _categories = categories;
@@ -123,34 +124,27 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
         : imageController.text.trim();
     final List<String> images = imageUrl == null ? [] : [imageUrl];
 
+    final input = MedicineInput(
+      name: nameController.text.trim(),
+      price: price,
+      categoryId: categoryId,
+      description: description,
+      discountPercent: discount,
+      stock: stock,
+      images: images,
+      requiresPrescription: _requiresPrescription,
+      isFeatured: _isFeatured,
+    );
+    final catalog = ref.read(catalogRepositoryProvider);
+
     setState(() => isLoading = true);
     try {
       if (widget.product == null) {
-        await ApiService.createMedicine(
-          name: nameController.text.trim(),
-          price: price,
-          categoryId: categoryId,
-          description: description,
-          discountPercent: discount,
-          stock: stock,
-          images: images,
-          requiresPrescription: _requiresPrescription,
-          isFeatured: _isFeatured,
-        );
+        await catalog.createMedicine(input);
       } else {
-        await ApiService.updateMedicine(
-          id: widget.product!.id,
-          name: nameController.text.trim(),
-          price: price,
-          categoryId: categoryId,
-          description: description,
-          discountPercent: discount,
-          stock: stock,
-          images: images,
-          requiresPrescription: _requiresPrescription,
-          isFeatured: _isFeatured,
-        );
+        await catalog.updateMedicine(widget.product!.id, input);
       }
+      ref.invalidate(medicinesProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -197,7 +191,8 @@ class _AdminProductFormPageState extends State<AdminProductFormPage> {
 
     setState(() => isLoading = true);
     try {
-      await ApiService.deleteMedicine(id: widget.product!.id);
+      await ref.read(catalogRepositoryProvider).deleteMedicine(widget.product!.id);
+      ref.invalidate(medicinesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Product deleted successfully')),

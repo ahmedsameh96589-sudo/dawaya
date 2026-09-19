@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import '../presentation/login_page.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/services/push_notification_service.dart';
 import '../../cart/presentation/cart_provider.dart';
 import '../../presentation/home_page.dart';
 import 'reset_password_screen.dart';
+import '../data/auth_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class OtpVerificationScreen extends StatefulWidget {
+class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({
     super.key,
     required this.userId,
@@ -18,10 +19,10 @@ class OtpVerificationScreen extends StatefulWidget {
   final String purpose;
 
   @override
-  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
 }
 
-class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   final List<TextEditingController> otpControllers = List.generate(
     6,
     (_) => TextEditingController(),
@@ -41,7 +42,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     setState(() => isLoading = true);
     try {
-      final result = await ApiService.verifyOtp(
+      final result = await ref.read(authRepositoryProvider).verifyOtp(
         userId: widget.userId,
         otp: otp,
         purpose: widget.purpose,
@@ -69,10 +70,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         throw Exception('Missing auth token.');
       }
 
-      AuthSession.token = result.token;
-      AuthSession.userId = widget.userId;
-      AuthSession.role = result.role ?? 'user';
-      AuthSession.name = result.name;
+      await AuthSession.start(
+        token: result.token!,
+        userId: widget.userId,
+        role: result.role ?? 'user',
+        name: result.name,
+      );
+      if (!mounted) return;
 
       CartProvider.of(context).loadFromServer(force: true);
       await PushNotificationService.registerTokenWithBackend();
@@ -80,7 +84,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+        MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
         (route) => false,
       );
       _showMessage(result.message);
@@ -96,7 +100,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   Future<void> resendOtp() async {
     setState(() => isResending = true);
     try {
-      await ApiService.resendOtp(
+      await ref.read(authRepositoryProvider).resendOtp(
         userId: widget.userId,
         purpose: widget.purpose,
       );

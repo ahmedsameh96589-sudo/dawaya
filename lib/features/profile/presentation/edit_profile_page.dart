@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../models/user_profile.dart';
+import '../data/profile_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key, required this.profile});
 
   final UserProfile profile;
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController nameController;
   late final TextEditingController emailController;
@@ -41,12 +42,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      final updated = await ApiService.updateMyProfile(
+      final updated = await ref.read(profileRepositoryProvider).updateMyProfile(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
         phone: phoneController.text.trim(),
       );
-      AuthSession.name = updated.name;
+      await AuthSession.updateName(updated.name);
       if (!mounted) return;
       Navigator.of(context).pop(updated);
     } catch (e) {

@@ -10,8 +10,9 @@ import 'package:http/http.dart' as http;
 import '../config/app_config.dart';
 import '../../features/cart/presentation/cart_provider.dart';
 import '../../features/presentation/home_page.dart';
-import 'api_services.dart';
 import 'push_notification_service.dart';
+import '../../app/providers.dart';
+import '../../features/auth/data/auth_repository.dart';
 
 class GoogleAuthService {
   GoogleAuthService._();
@@ -55,7 +56,7 @@ class GoogleAuthService {
     await PushNotificationService.registerTokenWithBackend();
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+      MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
       (route) => false,
     );
 
@@ -96,7 +97,7 @@ class GoogleAuthService {
     String idToken,
   ) async {
     try {
-      return await ApiService.googleAuth(idToken: idToken);
+      return await appContainer.read(authRepositoryProvider).googleAuth(idToken: idToken);
     } on SocketException catch (e) {
       throw Exception(
         'Cannot reach the backend at ${AppConfig.apiBaseUrl} '

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/services/api_services.dart';
 import '../../catalog/models/product.dart';
+import '../../catalog/data/catalog_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FavoritesPage extends StatefulWidget {
+class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key});
 
   @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
+  ConsumerState<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> {
+class _FavoritesPageState extends ConsumerState<FavoritesPage> {
   bool _loading = true;
   String? _error;
   List<Product> _products = [];
@@ -27,7 +28,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
       _error = null;
     });
     try {
-      final products = await ApiService.fetchMedicines();
+      final products = await ref.read(catalogRepositoryProvider).fetchMedicines();
       setState(() {
         _products = products.take(8).toList();
         _loading = false;

@@ -8,13 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../../app/app.dart';
 import '../../features/chat/presentation/chat_page.dart';
 import '../../features/notifications/models/app_notification.dart';
 import '../../features/orders/presentation/orders_page.dart';
 import '../config/firebase_options.dart';
-import 'api_services.dart';
 import 'auth_session.dart';
+import '../../app/providers.dart';
+import '../../features/notifications/data/notification_repository.dart';
+import '../../features/reminders/presentation/reminders_page.dart';
+import '../../features/orders/presentation/order_details_page.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -31,6 +33,10 @@ class PushNotificationService {
 
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+
+  /// The shared local-notification plugin, so features such as medicine
+  /// reminders schedule through the same initialized instance.
+  static FlutterLocalNotificationsPlugin get localNotifications => _localNotifications;
 
   static bool _initialized = false;
   static bool _firebaseReady = false;
@@ -84,7 +90,7 @@ class PushNotificationService {
   }
 
   static Future<void> registerTokenWithBackend() async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) {
+    if (!AuthSession.isLoggedIn) {
       return;
     }
 
@@ -101,7 +107,7 @@ class PushNotificationService {
         debugPrint('🔔 Push: FCM token is null (check google-services.json / permissions).');
         return;
       }
-      await ApiService.registerFcmToken(token);
+      await appContainer.read(notificationRepositoryProvider).registerFcmToken(token);
       debugPrint('🔔 Push: FCM token registered with backend.');
     } catch (e) {
       debugPrint('🔔 Push: FCM token registration failed: $e');
@@ -109,7 +115,7 @@ class PushNotificationService {
   }
 
   static void startInAppNotificationPolling() {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) return;
+    if (!AuthSession.isLoggedIn) return;
 
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(_pollInterval, (_) => _pollForNewNotifications());
@@ -124,13 +130,13 @@ class PushNotificationService {
   }
 
   static Future<void> _pollForNewNotifications() async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) {
+    if (!AuthSession.isLoggedIn) {
       stopInAppNotificationPolling();
       return;
     }
 
     try {
-      final feed = await ApiService.fetchNotifications(limit: 20);
+      final feed = await appContainer.read(notificationRepositoryProvider).fetchNotifications(limit: 20);
       _processPolledNotifications(feed.notifications);
     } catch (e) {
       debugPrint('🔔 Push: polling fallback error: $e');
@@ -170,9 +176,9 @@ class PushNotificationService {
   }
 
   static Future<void> _registerToken(String token) async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) return;
+    if (!AuthSession.isLoggedIn) return;
     try {
-      await ApiService.registerFcmToken(token);
+      await appContainer.read(notificationRepositoryProvider).registerFcmToken(token);
       debugPrint('🔔 Push: FCM token refresh uploaded.');
     } catch (e) {
       debugPrint('🔔 Push: FCM token refresh upload failed: $e');
@@ -281,7 +287,7 @@ class PushNotificationService {
     final consultationId =
         data['consultationId'] ?? data['refId'] ?? '';
 
-    final navigator = DawayaaApp.rootNavigatorKey.currentState;
+    final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
 
     if (type == 'consultation_update' ||
@@ -298,8 +304,20 @@ class PushNotificationService {
     }
 
     if (type == 'order_update' || refModel == 'Order') {
+      final orderId = data['orderId'] ?? data['refId'] ?? '';
       navigator.push(
-        MaterialPageRoute<void>(builder: (_) => const OrdersPage()),
+        MaterialPageRoute<void>(
+          builder: (_) => orderId.isNotEmpty
+              ? OrderDetailsPage(orderId: orderId)
+              : const OrdersPage(),
+        ),
+      );
+      return;
+    }
+
+    if (type == 'reminder') {
+      navigator.push(
+        MaterialPageRoute<void>(builder: (_) => const RemindersPage()),
       );
     }
   }

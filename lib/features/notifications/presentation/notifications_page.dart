@@ -3,36 +3,37 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_localization.dart';
-import '../../../core/services/api_services.dart';
 import '../../../core/services/auth_session.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/presentation/login_page.dart';
 import '../../notifications/models/app_notification.dart';
 import '../../chat/presentation/chat_page.dart';
 import '../../orders/presentation/orders_page.dart';
+import '../data/notification_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class NotificationsPage extends StatefulWidget {
+class NotificationsPage extends ConsumerStatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  State<NotificationsPage> createState() => _NotificationsPageState();
+  ConsumerState<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageState extends State<NotificationsPage>
+class _NotificationsPageState extends ConsumerState<NotificationsPage>
     with WidgetsBindingObserver {
   Future<NotificationFeed>? _notificationsFuture;
   Timer? _pollTimer;
   static const Duration _pollInterval = Duration(seconds: 5);
 
   bool get _isLoggedIn =>
-      AuthSession.token != null && AuthSession.token!.isNotEmpty;
+      AuthSession.isLoggedIn;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (_isLoggedIn) {
-      _notificationsFuture = ApiService.fetchNotifications();
+      _notificationsFuture = ref.read(notificationRepositoryProvider).fetchNotifications();
       _startPolling();
     }
   }
@@ -62,7 +63,7 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   Future<void> _pollNotifications({bool silent = false}) async {
     try {
-      final feed = await ApiService.fetchNotifications();
+      final feed = await ref.read(notificationRepositoryProvider).fetchNotifications();
       if (!mounted) return;
       setState(() => _notificationsFuture = Future.value(feed));
     } catch (_) {
@@ -76,14 +77,14 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   Future<void> _refresh() async {
     setState(() {
-      _notificationsFuture = ApiService.fetchNotifications();
+      _notificationsFuture = ref.read(notificationRepositoryProvider).fetchNotifications();
     });
     await _notificationsFuture;
   }
 
   Future<void> _markAllAsRead() async {
     try {
-      await ApiService.markAllNotificationsAsRead();
+      await ref.read(notificationRepositoryProvider).markAllAsRead();
       if (!mounted) return;
       await _refresh();
     } catch (e) {
@@ -97,10 +98,10 @@ class _NotificationsPageState extends State<NotificationsPage>
   Future<void> _openNotification(AppNotification notification) async {
     if (!notification.isRead && notification.id.isNotEmpty) {
       try {
-        await ApiService.markNotificationAsRead(notification.id);
+        await ref.read(notificationRepositoryProvider).markAsRead(notification.id);
         if (mounted) {
           setState(() {
-            _notificationsFuture = ApiService.fetchNotifications();
+            _notificationsFuture = ref.read(notificationRepositoryProvider).fetchNotifications();
           });
         }
       } catch (_) {
@@ -136,7 +137,7 @@ class _NotificationsPageState extends State<NotificationsPage>
 
   Future<void> _deleteNotification(AppNotification notification) async {
     try {
-      await ApiService.deleteNotification(notification.id);
+      await ref.read(notificationRepositoryProvider).delete(notification.id);
       if (!mounted) return;
       await _refresh();
     } catch (e) {
@@ -174,7 +175,7 @@ class _NotificationsPageState extends State<NotificationsPage>
       );
     }
 
-    _notificationsFuture ??= ApiService.fetchNotifications();
+    _notificationsFuture ??= ref.read(notificationRepositoryProvider).fetchNotifications();
 
     return Scaffold(
       backgroundColor: AppColors.surface,

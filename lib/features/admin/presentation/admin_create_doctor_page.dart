@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import '../data/admin_repository.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/api_services.dart';
 
-class AdminCreateDoctorPage extends StatefulWidget {
+class AdminCreateDoctorPage extends ConsumerStatefulWidget {
   const AdminCreateDoctorPage({super.key});
 
   @override
-  State<AdminCreateDoctorPage> createState() => _AdminCreateDoctorPageState();
+  ConsumerState<AdminCreateDoctorPage> createState() => _AdminCreateDoctorPageState();
 }
 
-class _AdminCreateDoctorPageState extends State<AdminCreateDoctorPage> {
+class _AdminCreateDoctorPageState extends ConsumerState<AdminCreateDoctorPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -27,7 +28,7 @@ class _AdminCreateDoctorPageState extends State<AdminCreateDoctorPage> {
 
     setState(() => isLoading = true);
     try {
-      await ApiService.createDoctor(
+      await ref.read(adminRepositoryProvider).createDoctor(
         name: nameController.text.trim(),
         email: emailController.text.trim(),
         phone: phoneController.text.trim(),

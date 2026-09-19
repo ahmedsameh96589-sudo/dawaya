@@ -210,7 +210,7 @@ class _CartPageState extends State<CartPage> {
                 onTap: () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute<void>(
-                      builder: (_) => const HomePage(title: 'Dawayaa'),
+                      builder: (_) => const HomePage(title: 'Dawaya'),
                     ),
                     (route) => false,
                   );

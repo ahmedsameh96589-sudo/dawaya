@@ -1,11 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
-import 'prescription_service.dart';
+import '../data/prescription_repository.dart';
 import 'package:path_provider/path_provider.dart';
 
-class PrescriptionScanPage extends StatefulWidget {
+class PrescriptionScanPage extends ConsumerStatefulWidget {
   const PrescriptionScanPage({
     super.key,
     required this.productId,
@@ -16,10 +17,10 @@ class PrescriptionScanPage extends StatefulWidget {
   final String medicineName;
 
   @override
-  State<PrescriptionScanPage> createState() => _PrescriptionScanPageState();
+  ConsumerState<PrescriptionScanPage> createState() => _PrescriptionScanPageState();
 }
 
-class _PrescriptionScanPageState extends State<PrescriptionScanPage> {
+class _PrescriptionScanPageState extends ConsumerState<PrescriptionScanPage> {
   File? _image;
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
@@ -84,10 +85,10 @@ Future<void> _submit() async {
 
   try {
     final String requestId =
-        await PrescriptionService.instance.submitPrescription(
+        await ref.read(prescriptionRepositoryProvider).submit(
       productId: widget.productId,
       productName: widget.medicineName,
-      imageFile: _image!,
+      imagePath: _image!.path,
     );
 
     if (!mounted) return;
