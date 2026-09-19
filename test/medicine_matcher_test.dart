@@ -77,4 +77,25 @@ void main() {
   test('ignores form words so they do not create false matches', () {
     expect(MedicineMatcher.match(scanned('Zyrtec inhaler'), catalog), isNull);
   });
+
+  test('matches a brand variant to the one-word brand as a best guess', () {
+    final brandOnly = [product('p', 'Panadol', ingredient: 'Paracetamol')];
+
+    final match = MedicineMatcher.match(
+      scanned('Panadol Extra 500mg tab'),
+      brandOnly,
+    );
+
+    expect(match?.product.id, 'p');
+    expect(match!.confidence, lessThan(0.9));
+  });
+
+  test('does not confuse products that share only a generic first word', () {
+    final vitamins = [product('c', 'Vitamin C 1000mg')];
+
+    expect(
+      MedicineMatcher.match(scanned('Vitamin D3 5000 IU tab'), vitamins),
+      isNull,
+    );
+  });
 }

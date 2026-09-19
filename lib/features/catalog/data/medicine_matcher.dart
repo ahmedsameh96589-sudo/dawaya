@@ -32,7 +32,23 @@ class MedicineMatcher {
     // Dosing instructions that often share the line with the name.
     'once', 'twice', 'three', 'times', 'daily', 'every', 'morning', 'night',
     'bd', 'tds', 'qid', 'od', 'bid', 'prn', 'sos', 'stat', 'after', 'before',
-    'meals', 'day', 'days', 'for', 'week', 'weeks', 'hours',
+    'meals',
+    'at',
+    'in',
+    'on',
+    'of',
+    'the',
+    'and',
+    'per',
+    'po',
+    'by',
+    'to',
+    'day',
+    'days',
+    'for',
+    'week',
+    'weeks',
+    'hours',
   };
 
   static MedicineMatch? match(MedicineResult scanned, List<Product> catalog) {
@@ -44,10 +60,20 @@ class MedicineMatcher {
 
     MedicineMatch? best;
     for (final product in catalog) {
+      final name = _words(product.name);
       var score = math.max(
-        _similarity(query, _words(product.name)),
+        _similarity(query, name),
         0.9 * _similarity(query, _words(product.activeIngredient)),
       );
+      // Short codes like "C", "D3" or "B12" name different products even
+      // when the rest of the name is identical, so they must agree.
+      if (_conflictingCodes(query, name)) continue;
+
+      // A one-word brand ("Panadol") still matches a variant on the
+      // prescription ("Panadol Extra"), but scored as a best guess.
+      if (name.length == 1) {
+        score = math.max(score, 0.88 * _ratio(query.first, name.single));
+      }
       if (score < threshold) continue;
 
       final strength = _digits('${product.name} ${product.strength}');
@@ -59,6 +85,15 @@ class MedicineMatcher {
       }
     }
     return best;
+  }
+
+  static bool _conflictingCodes(List<String> a, List<String> b) {
+    bool isCode(String w) => w.length <= 3 || w.contains(RegExp(r'\d'));
+    final codesA = a.where(isCode).toSet();
+    final codesB = b.where(isCode).toSet();
+    return codesA.isNotEmpty &&
+        codesB.isNotEmpty &&
+        codesA.intersection(codesB).isEmpty;
   }
 
   /// How well every query word is covered by some candidate word, weighted
@@ -114,7 +149,7 @@ class MedicineMatcher {
         .split(RegExp(r'[^a-z0-9؀-ۿ]+'))
         .where(
           (w) =>
-              w.length > 1 &&
+              w.isNotEmpty &&
               !_noise.contains(w) &&
               !RegExp(r'^\d+$').hasMatch(w),
         )
