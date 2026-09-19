@@ -22,7 +22,7 @@ This repo is the **Flutter mobile app**. It talks to a Node.js / Express / Mongo
 |-------|-------|
 | Mobile | Flutter, Dart, `camera`, `google_mlkit_text_recognition`, `image_picker`, `google_sign_in` |
 | Notifications | `firebase_core`, `firebase_messaging`, `flutter_local_notifications` |
-| Backend (separate repo) | Node.js, Express, MongoDB/Mongoose, JWT, Firebase Admin, Nodemailer, Twilio |
+| Backend ([dawaya-backend](https://github.com/ahmedsameh96589-sudo/dawaya-backend)) | Node.js, Express, MongoDB/Mongoose, JWT, Firebase Admin, Nodemailer, Twilio |
 
 ## Project structure
 
