@@ -1,10 +1,17 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../catalog/data/prescription_parser.dart';
+import '../../cart/presentation/cart_provider.dart';
+import '../../catalog/data/catalog_repository.dart';
+import '../../catalog/data/medicine_matcher.dart';
+import '../../catalog/models/product.dart';
+import '../../catalog/presentation/product_details_page.dart';
+import '../../catalog/presentation/scan_match_tile.dart';
 
 class ScanPrescriptionScreen extends StatefulWidget {
   const ScanPrescriptionScreen({super.key});
@@ -538,7 +545,7 @@ class _ControlButton extends StatelessWidget {
 
 // ── Result bottom-sheet ───────────────────────────────────────────
 
-class _ResultSheet extends StatefulWidget {
+class _ResultSheet extends ConsumerStatefulWidget {
   final List<MedicineResult> medicines;
   final String rawText;
   final Color accent, surface, bg, textPrimary, textSecondary, warn;
@@ -555,14 +562,98 @@ class _ResultSheet extends StatefulWidget {
   });
 
   @override
-  State<_ResultSheet> createState() => _ResultSheetState();
+  ConsumerState<_ResultSheet> createState() => _ResultSheetState();
 }
 
-class _ResultSheetState extends State<_ResultSheet> {
+class _ResultSheetState extends ConsumerState<_ResultSheet> {
   bool showRaw = false;
+
+  /// Product ids added to the cart from this sheet, and ids with a request
+  /// in flight.
+  final Set<String> _added = {};
+  final Set<String> _busy = {};
+
+  /// Substitutes the user asked for, by scanned-medicine index.
+  final Map<int, Product> _substitutes = {};
+
+  Product? _productFor(int index, List<MedicineMatch?> matches) =>
+      _substitutes[index] ?? matches[index]?.product;
+
+  Future<bool> _add(Product product) async {
+    setState(() => _busy.add(product.id));
+    try {
+      await CartProvider.of(context).add(product);
+      if (mounted) setState(() => _added.add(product.id));
+      return true;
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy.remove(product.id));
+    }
+  }
+
+  Future<void> _addAll(List<Product> products) async {
+    for (final product in products) {
+      // Stop at the first failure (e.g. signed out) instead of repeating it.
+      if (!await _add(product)) return;
+    }
+    _toast('Added ${products.length} to your cart.');
+  }
+
+  void _open(Product product) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => ProductDetailsPage(product: product)),
+    );
+  }
+
+  Future<void> _findSubstitute(int index, Product product) async {
+    setState(() => _busy.add(product.id));
+    try {
+      final alternatives =
+          await ref.read(catalogRepositoryProvider).fetchAlternatives(product.id);
+      final inStock = alternatives
+          .where((p) => p.id != product.id && !p.isOutOfStock)
+          .toList();
+      if (inStock.isEmpty) {
+        _toast('No substitute is in stock right now.');
+      } else if (mounted) {
+        setState(() => _substitutes[index] = inStock.first);
+      }
+    } catch (e) {
+      _toast(e.toString());
+    } finally {
+      if (mounted) setState(() => _busy.remove(product.id));
+    }
+  }
+
+  ButtonStyle get _primaryButtonStyle => ElevatedButton.styleFrom(
+        backgroundColor: widget.accent,
+        foregroundColor: widget.bg,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      );
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final catalog = ref.watch(medicinesProvider);
+    final products = catalog.value ?? const <Product>[];
+    final matches = [
+      for (final med in widget.medicines)
+        catalog.hasValue ? MedicineMatcher.match(med, products) : null,
+    ];
+    final addable = <Product>[
+      for (var i = 0; i < widget.medicines.length; i++)
+        if (_productFor(i, matches) case final product?)
+          if (actionFor(product) == ScanMatchAction.add && !_added.contains(product.id))
+            product,
+    ];
+
     return DraggableScrollableSheet(
       initialChildSize: 0.55,
       minChildSize: 0.35,
@@ -632,8 +723,26 @@ class _ResultSheetState extends State<_ResultSheet> {
                         controller: controller,
                         padding: const EdgeInsets.all(16),
                         children: [
-                          ...widget.medicines
-                              .map((m) => _MedCard(med: m, accent: widget.accent, textPrimary: widget.textPrimary, textSecondary: widget.textSecondary)),
+                          for (var i = 0; i < widget.medicines.length; i++)
+                            _MedCard(
+                              med: widget.medicines[i],
+                              accent: widget.accent,
+                              textPrimary: widget.textPrimary,
+                              textSecondary: widget.textSecondary,
+                              footer: ScanMatchTile(
+                                match: matches[i],
+                                isLoadingCatalog: catalog.isLoading && !catalog.hasValue,
+                                isAdded: _added.contains(_productFor(i, matches)?.id),
+                                isBusy: _busy.contains(_productFor(i, matches)?.id),
+                                substitute: _substitutes[i],
+                                accent: widget.accent,
+                                textPrimary: widget.textPrimary,
+                                textSecondary: widget.textSecondary,
+                                onAdd: _add,
+                                onOpen: _open,
+                                onFindSubstitute: (p) => _findSubstitute(i, p),
+                              ),
+                            ),
                           const SizedBox(height: 12),
                           // Raw text toggle
                           GestureDetector(
@@ -685,26 +794,50 @@ class _ResultSheetState extends State<_ResultSheet> {
                         ],
                       ),
               ),
-              // Close
+              // Add matched medicines to the cart, or close
               SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.accent,
-                        foregroundColor: widget.bg,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (addable.isNotEmpty) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                _busy.isEmpty ? () => _addAll(addable) : null,
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: Text(
+                              'Add ${addable.length} to cart',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 15),
+                            ),
+                            style: _primaryButtonStyle,
+                          ),
                         ),
-                      ),
-                      child: const Text('Done',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
-                    ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                                foregroundColor: widget.textSecondary),
+                            child: const Text('Done'),
+                          ),
+                        ),
+                      ] else
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: _primaryButtonStyle,
+                            child: const Text('Done',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 15)),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -740,12 +873,14 @@ class _ResultSheetState extends State<_ResultSheet> {
 class _MedCard extends StatelessWidget {
   final MedicineResult med;
   final Color accent, textPrimary, textSecondary;
+  final Widget? footer;
 
   const _MedCard({
     required this.med,
     required this.accent,
     required this.textPrimary,
     required this.textSecondary,
+    this.footer,
   });
 
   @override
@@ -792,6 +927,7 @@ class _MedCard extends StatelessWidget {
               ],
             ),
           ],
+          if (footer != null) footer!,
         ],
       ),
     );
