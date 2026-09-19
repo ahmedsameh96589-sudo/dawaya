@@ -10,6 +10,7 @@ import 'consultation_rating_dialog.dart';
 import '../../../core/network/uploads.dart';
 import '../data/chat_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/realtime_client.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   const ChatPage({super.key, required this.consultationId});
@@ -29,22 +30,45 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   bool _sending = false;
   String? _error;
   Timer? _pollTimer;
+  StreamSubscription<ConsultationEvent>? _liveEvents;
   bool _ratingPromptShown = false;
-  static const Duration _pollInterval = Duration(seconds: 3);
+
+  /// New messages arrive over the socket. Polling only runs as a safety net
+  /// while the socket is disconnected (e.g. a flaky network).
+  static const Duration _fallbackPollInterval = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
-    _loadConsultation().then((_) => _startPolling());
+    _loadConsultation().then((_) => _startLiveUpdates());
   }
 
-  void _startPolling() {
+  void _startLiveUpdates() {
+    final realtime = ref.read(realtimeClientProvider);
+    realtime.connect();
+    _liveEvents = realtime.eventsFor(widget.consultationId).listen(_onLiveEvent);
+
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(_pollInterval, (_) {
-      if (mounted && !_sending && !_loading) {
+    _pollTimer = Timer.periodic(_fallbackPollInterval, (_) {
+      if (mounted && !_sending && !_loading && !realtime.connected.value) {
         _refreshMessages(silent: true);
       }
     });
+  }
+
+  void _onLiveEvent(ConsultationEvent event) {
+    if (!mounted) return;
+    final message = event.message;
+    if (message != null && !_messages.any((m) => m.id == message.id)) {
+      final shouldScroll = _isNearBottom;
+      setState(() => _messages.add(message));
+      if (shouldScroll) _scrollToBottom();
+    }
+    // A status change (doctor closed the chat, first reply activated it)
+    // needs the full consultation for the header and rating prompt.
+    if (event.status != null && event.status != _consultation?.status) {
+      _refreshMessages(silent: true);
+    }
   }
 
   Future<void> _loadConsultation() async {
@@ -263,6 +287,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _liveEvents?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

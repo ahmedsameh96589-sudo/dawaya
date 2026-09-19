@@ -20,6 +20,7 @@ import '../../notifications/data/notification_repository.dart';
 import '../data/profile_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../reminders/presentation/reminders_page.dart';
+import '../../../core/network/realtime_client.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -349,6 +350,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> with WidgetsBindingOb
                         child: ElevatedButton.icon(
                           onPressed: () {
                             PushNotificationService.stopInAppNotificationPolling();
+                            ref.read(realtimeClientProvider).disconnect();
                             AuthSession.clear();
                             CartProvider.of(context).resetLocal();
                             Navigator.of(context).pushAndRemoveUntil(

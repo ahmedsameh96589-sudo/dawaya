@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/network/api_client.dart';
+import '../core/network/realtime_client.dart';
 import '../core/services/auth_session.dart';
 import '../core/services/push_notification_service.dart';
 import '../features/cart/data/cart_repository.dart';
@@ -37,6 +38,7 @@ Future<void> _signOutExpiredSession() async {
   _signingOut = true;
   try {
     PushNotificationService.stopInAppNotificationPolling();
+    appContainer.read(realtimeClientProvider).disconnect();
     await AuthSession.clear();
     appContainer.read(cartControllerProvider).resetLocal();
     rootNavigatorKey.currentState?.pushNamedAndRemoveUntil(
