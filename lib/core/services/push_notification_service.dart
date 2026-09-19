@@ -84,7 +84,7 @@ class PushNotificationService {
   }
 
   static Future<void> registerTokenWithBackend() async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) {
+    if (!AuthSession.isLoggedIn) {
       return;
     }
 
@@ -109,7 +109,7 @@ class PushNotificationService {
   }
 
   static void startInAppNotificationPolling() {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) return;
+    if (!AuthSession.isLoggedIn) return;
 
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(_pollInterval, (_) => _pollForNewNotifications());
@@ -124,7 +124,7 @@ class PushNotificationService {
   }
 
   static Future<void> _pollForNewNotifications() async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) {
+    if (!AuthSession.isLoggedIn) {
       stopInAppNotificationPolling();
       return;
     }
@@ -170,7 +170,7 @@ class PushNotificationService {
   }
 
   static Future<void> _registerToken(String token) async {
-    if (AuthSession.token == null || AuthSession.token!.isEmpty) return;
+    if (!AuthSession.isLoggedIn) return;
     try {
       await ApiService.registerFcmToken(token);
       debugPrint('🔔 Push: FCM token refresh uploaded.');

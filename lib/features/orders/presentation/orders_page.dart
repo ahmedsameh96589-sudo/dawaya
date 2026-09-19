@@ -22,7 +22,7 @@ class _OrdersPageState extends State<OrdersPage> {
   void initState() {
     super.initState();
     final bool isLoggedIn =
-        AuthSession.token != null && AuthSession.token!.isNotEmpty;
+        AuthSession.isLoggedIn;
     if (isLoggedIn) {
       _ordersFuture = _fetchOrders();
     }
@@ -75,7 +75,7 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     final bool isLoggedIn =
-        AuthSession.token != null && AuthSession.token!.isNotEmpty;
+        AuthSession.isLoggedIn;
 
     if (!isLoggedIn) {
       return Scaffold(

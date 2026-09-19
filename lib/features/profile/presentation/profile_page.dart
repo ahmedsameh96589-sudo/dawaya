@@ -32,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   static const Duration _notificationPollInterval = Duration(seconds: 5);
 
   bool get _isLoggedIn =>
-      AuthSession.token != null && AuthSession.token!.isNotEmpty;
+      AuthSession.isLoggedIn;
 
   @override
   void initState() {
@@ -427,7 +427,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                 onTap: () {
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute<void>(
-                      builder: (_) => const HomePage(title: 'Dawayaa'),
+                      builder: (_) => const HomePage(title: 'Dawaya'),
                     ),
                     (route) => false,
                   );

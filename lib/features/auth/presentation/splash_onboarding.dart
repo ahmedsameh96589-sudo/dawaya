@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../../../core/services/auth_session.dart';
+
 const Color darkBlue = Color(0xFF0B1C6D);
 const Color lightBlue = Color(0xFF1BB1E7);
 const Color leafGreen = Color(0xFF6BCF9C);
@@ -53,7 +55,10 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _goToOnboarding() {
-    Navigator.pushReplacementNamed(context, '/onboarding');
+    Navigator.pushReplacementNamed(
+      context,
+      AuthSession.isLoggedIn ? '/home' : '/onboarding',
+    );
   }
 
   @override

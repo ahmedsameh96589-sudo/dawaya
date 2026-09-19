@@ -69,10 +69,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         throw Exception('Missing auth token.');
       }
 
-      AuthSession.token = result.token;
-      AuthSession.userId = widget.userId;
-      AuthSession.role = result.role ?? 'user';
-      AuthSession.name = result.name;
+      await AuthSession.start(
+        token: result.token!,
+        userId: widget.userId,
+        role: result.role ?? 'user',
+        name: result.name,
+      );
+      if (!mounted) return;
 
       CartProvider.of(context).loadFromServer(force: true);
       await PushNotificationService.registerTokenWithBackend();
@@ -80,7 +83,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+        MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
         (route) => false,
       );
       _showMessage(result.message);

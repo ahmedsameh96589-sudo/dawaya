@@ -25,7 +25,7 @@ class _NotificationsPageState extends State<NotificationsPage>
   static const Duration _pollInterval = Duration(seconds: 5);
 
   bool get _isLoggedIn =>
-      AuthSession.token != null && AuthSession.token!.isNotEmpty;
+      AuthSession.isLoggedIn;
 
   @override
   void initState() {

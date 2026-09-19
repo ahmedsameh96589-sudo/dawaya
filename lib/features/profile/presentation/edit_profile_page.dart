@@ -46,7 +46,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         email: emailController.text.trim(),
         phone: phoneController.text.trim(),
       );
-      AuthSession.name = updated.name;
+      await AuthSession.updateName(updated.name);
       if (!mounted) return;
       Navigator.of(context).pop(updated);
     } catch (e) {

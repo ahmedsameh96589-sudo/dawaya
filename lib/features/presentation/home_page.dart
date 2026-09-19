@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    if (AuthSession.token != null && AuthSession.token!.isNotEmpty) {
+    if (AuthSession.isLoggedIn) {
       PushNotificationService.startInAppNotificationPolling();
       PushNotificationService.registerTokenWithBackend();
     }

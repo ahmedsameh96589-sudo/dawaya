@@ -23,7 +23,7 @@ class CartController extends ChangeNotifier {
   }
 
   bool _hasAuth() {
-    return AuthSession.token != null && AuthSession.token!.isNotEmpty;
+    return AuthSession.isLoggedIn;
   }
 
   void _requireAuth() {

@@ -38,15 +38,18 @@ class _LoginPageState extends State<LoginPage> {
 
       // Doctor accounts skip OTP (separate collection, direct JWT from backend)
       if (result.skipOtp && result.token != null) {
-        AuthSession.token = result.token;
-        AuthSession.userId = result.userId;
-        AuthSession.role = result.role ?? 'doctor';
-        AuthSession.name = result.name;
+        await AuthSession.start(
+          token: result.token!,
+          userId: result.userId,
+          role: result.role ?? 'doctor',
+          name: result.name,
+        );
+        if (!mounted) return;
         CartProvider.of(context).loadFromServer(force: true);
         await PushNotificationService.registerTokenWithBackend();
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+          MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
           (route) => false,
         );
         _showMessage(result.message);
@@ -287,7 +290,7 @@ class _LoginPageState extends State<LoginPage> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  const HomePage(title: 'Dawayaa'),
+                                  const HomePage(title: 'Dawaya'),
                             ),
                           );
                         },
