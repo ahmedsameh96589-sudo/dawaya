@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../cart/models/order_request.dart';
+import '../models/order_detail.dart';
 import '../models/order_summary.dart';
 
 class OrderRepository {
@@ -29,6 +32,17 @@ class OrderRepository {
     );
     return dataList(body, 'orders').map(OrderSummary.fromJson).toList();
   }
+
+  Future<OrderDetail> fetchOrder(String id) async =>
+      OrderDetail.fromJson(dataObject(await _api.get('/orders/$id'), 'order'));
+
+  Future<OrderDetail> cancelOrder(String id, {String? reason}) async {
+    final body = await _api.put(
+      '/orders/$id/cancel',
+      body: {if (reason != null && reason.isNotEmpty) 'reason': reason},
+    );
+    return OrderDetail.fromJson(dataObject(body, 'order'));
+  }
 }
 
 final orderRepositoryProvider = Provider<OrderRepository>(
@@ -38,3 +52,18 @@ final orderRepositoryProvider = Provider<OrderRepository>(
 final myOrdersProvider = FutureProvider.autoDispose<List<OrderSummary>>(
   (ref) => ref.watch(orderRepositoryProvider).fetchMyOrders(),
 );
+
+/// One order's details, refreshed every 30 seconds while it is still on
+/// its way so status changes show up without a manual refresh.
+final orderDetailProvider = FutureProvider.autoDispose
+    .family<OrderDetail, String>((ref, id) async {
+      final order = await ref.watch(orderRepositoryProvider).fetchOrder(id);
+      if (!order.isCancelled && order.status != 'delivered') {
+        final timer = Timer(
+          const Duration(seconds: 30),
+          () => ref.invalidateSelf(),
+        );
+        ref.onDispose(timer.cancel);
+      }
+      return order;
+    });

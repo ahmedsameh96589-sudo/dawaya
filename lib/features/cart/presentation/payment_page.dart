@@ -6,6 +6,7 @@ import 'cart_provider.dart';
 import 'visa_details_page.dart';
 import '../../orders/data/order_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../orders/presentation/order_details_page.dart';
 
 class PaymentPage extends ConsumerStatefulWidget {
   const PaymentPage({super.key, required this.address});
@@ -51,7 +52,9 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             : 'Cash on delivery',
       );
 
-      await ref.read(orderRepositoryProvider).placeOrder(request);
+      final orderId = await ref
+          .read(orderRepositoryProvider)
+          .placeOrder(request);
 
       if (!mounted) return;
 
@@ -59,15 +62,13 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         await CartProvider.of(context).clear();
       } catch (_) {}
 
-      _showPendingDialog();
+      _showPendingDialog(orderId);
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            e.toString().replaceAll('Exception:', '').trim(),
-          ),
+          content: Text(e.toString().replaceAll('Exception:', '').trim()),
         ),
       );
     } finally {
@@ -77,7 +78,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     }
   }
 
-  void _showPendingDialog() {
+  void _showPendingDialog(String orderId) {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -92,8 +93,20 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text('OK'),
+            child: const Text('Done'),
           ),
+          if (orderId.isNotEmpty)
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => OrderDetailsPage(orderId: orderId),
+                  ),
+                );
+              },
+              child: const Text('Track order'),
+            ),
         ],
       ),
     );
@@ -104,9 +117,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
     final result = await Navigator.of(context).push<Map<String, String>>(
       MaterialPageRoute(
-        builder: (_) => VisaDetailsPage(
-          existingCard: _savedCard,
-        ),
+        builder: (_) => VisaDetailsPage(existingCard: _savedCard),
       ),
     );
 
@@ -167,8 +178,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   : null,
             ),
 
-            if (_savedCard != null &&
-                _selectedMethod == 'visa') ...[
+            if (_savedCard != null && _selectedMethod == 'visa') ...[
               const SizedBox(height: 6),
 
               GestureDetector(
@@ -193,9 +203,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               width: double.infinity,
 
               child: ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : () => _placeOrder(context),
+                onPressed: _isLoading ? null : () => _placeOrder(context),
 
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brandBlue,
@@ -251,22 +259,15 @@ class _PaymentOption extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
 
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 
         decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.brandAccent
-              : Colors.white,
+          color: isActive ? AppColors.brandAccent : Colors.white,
 
           borderRadius: BorderRadius.circular(18),
 
           border: Border.all(
-            color: isActive
-                ? AppColors.brandBlue
-                : Colors.grey.shade300,
+            color: isActive ? AppColors.brandBlue : Colors.grey.shade300,
 
             width: isActive ? 1.5 : 1,
           ),
@@ -275,33 +276,23 @@ class _PaymentOption extends StatelessWidget {
         child: Row(
           children: <Widget>[
             Icon(
-              isActive
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
+              isActive ? Icons.radio_button_checked : Icons.radio_button_off,
 
-              color: isActive
-                  ? AppColors.brandBlue
-                  : Colors.black38,
+              color: isActive ? AppColors.brandBlue : Colors.black38,
 
               size: 18,
             ),
 
             const SizedBox(width: 10),
 
-            Icon(
-              icon,
-              size: 20,
-              color: Colors.black87,
-            ),
+            Icon(icon, size: 20, color: Colors.black87),
 
             const SizedBox(width: 8),
 
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
 

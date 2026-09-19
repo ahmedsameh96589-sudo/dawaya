@@ -6,6 +6,7 @@ import '../../../core/widgets/async_states.dart';
 import '../../auth/presentation/login_page.dart';
 import '../data/order_repository.dart';
 import '../models/order_summary.dart';
+import 'order_details_page.dart';
 
 class OrdersPage extends ConsumerWidget {
   const OrdersPage({super.key});
@@ -73,40 +74,64 @@ class _OrderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String created =
         '${order.createdAt.day}/${order.createdAt.month}/${order.createdAt.year}';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
-          ),
-        ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => OrderDetailsPage(orderId: order.id),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  order.orderNumber.isEmpty ? 'Order' : order.orderNumber,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 10,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    order.orderNumber.isEmpty ? 'Order' : order.orderNumber,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
-              _StatusBadge(status: order.status),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text('Items: ${order.itemCount}'),
-          const SizedBox(height: 4),
-          Text('Total: ${order.total.toStringAsFixed(0)} EGP'),
-          const SizedBox(height: 4),
-          Text('Date: $created'),
-        ],
+                _StatusBadge(status: order.status),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Items: ${order.itemCount}'),
+            const SizedBox(height: 4),
+            Text('Total: ${order.total.toStringAsFixed(0)} EGP'),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(child: Text('Date: $created')),
+                const Text(
+                  'Track order',
+                  style: TextStyle(
+                    color: Color(0xFF0B2A7D),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Color(0xFF0B2A7D),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
