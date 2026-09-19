@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1079464992241",
+    "project_id": "dawaya-366c3",
+    "storage_bucket": "dawaya-366c3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1079464992241:android:15d41629bab73e76b83850",
+        "android_client_info": {
+          "package_name": "com.example.dawayaa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqpmXstLc7a_FsVlP7ePZckug-go_Aqdw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
