@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../catalog/data/prescription_parser.dart';
 
 class ScanPrescriptionScreen extends StatefulWidget {
   const ScanPrescriptionScreen({super.key});
@@ -75,59 +76,6 @@ class _ScanPrescriptionScreenState extends State<ScanPrescriptionScreen>
     }
   }
 
-  // ── Medicine extraction ─────────────────────────────────────────
-  List<MedicineResult> _extractMedicines(String text) {
-    final lines = text.split('\n');
-    final results = <MedicineResult>[];
-
-    // Known med keywords / patterns
-    final dosePattern =
-        RegExp(r'\b\d+\s*(mg|mcg|ml|g|iu|unit|units)\b', caseSensitive: false);
-    final freqPattern = RegExp(
-        r'\b(once|twice|three times|daily|every|morning|night|bd|tds|qid|od|bid|prn|sos|stat)\b',
-        caseSensitive: false);
-    final formPattern = RegExp(
-        r'\b(tab|tablet|cap|capsule|syrup|drops|injection|inj|cream|ointment|gel|patch|inhaler|spray|susp|suspension)\b',
-        caseSensitive: false);
-
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (line.length < 3) continue;
-
-      bool hasDose = dosePattern.hasMatch(line);
-      bool hasFreq = freqPattern.hasMatch(line);
-      bool hasForm = formPattern.hasMatch(line);
-
-      // Score: at least one strong indicator
-      if (hasDose || hasForm || (hasFreq && line.length > 8)) {
-        final doseMatch = dosePattern.firstMatch(line);
-        final formMatch = formPattern.firstMatch(line);
-
-        results.add(MedicineResult(
-          name: _cleanMedName(line),
-          dose: doseMatch?.group(0),
-          form: formMatch?.group(0),
-          frequency: _extractFrequency(line, freqPattern),
-          rawLine: line,
-        ));
-      }
-    }
-
-    return results;
-  }
-
-  String _cleanMedName(String line) {
-    // Try to grab first capitalised word(s) as the medicine name
-    final nameMatch =
-        RegExp(r'^([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)*)').firstMatch(line);
-    return nameMatch?.group(0) ?? line.split(RegExp(r'\s+\d')).first.trim();
-  }
-
-  String? _extractFrequency(String line, RegExp pattern) {
-    final m = pattern.firstMatch(line);
-    return m?.group(0);
-  }
-
   // ── Capture from camera ─────────────────────────────────────────
   Future<void> _captureImage() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
@@ -167,7 +115,7 @@ class _ScanPrescriptionScreenState extends State<ScanPrescriptionScreen>
     try {
       final inputImage = InputImage.fromFilePath(path);
       final recognized = await _textRecognizer.processImage(inputImage);
-      final meds = _extractMedicines(recognized.text);
+      final meds = PrescriptionParser.extract(recognized.text);
       if (mounted) _showResult(meds, recognized.text);
     } catch (e) {
       _showError('OCR failed: $e');
@@ -352,7 +300,6 @@ class _ScanPrescriptionScreenState extends State<ScanPrescriptionScreen>
   }
 
   List<Widget> _buildCorners() {
-    const size = 20.0;
     const thickness = 3.0;
     return [
       _corner(top: 0, left: 0, borderT: thickness, borderL: thickness),
@@ -882,19 +829,3 @@ class _Chip extends StatelessWidget {
 }
 
 // ── Data model ────────────────────────────────────────────────────
-
-class MedicineResult {
-  final String name;
-  final String? dose;
-  final String? form;
-  final String? frequency;
-  final String rawLine;
-
-  const MedicineResult({
-    required this.name,
-    this.dose,
-    this.form,
-    this.frequency,
-    required this.rawLine,
-  });
-}

@@ -53,23 +53,6 @@ class _VisaDetailsPageState extends State<VisaDetailsPage> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /// Formats raw digits as "XXXX XXXX XXXX XXXX" while the user types.
-  String _formatCardNumber(String raw) {
-    final digits = raw.replaceAll(RegExp(r'\D'), '');
-    final groups = <String>[];
-    for (var i = 0; i < digits.length && i < 16; i += 4) {
-      groups.add(digits.substring(i, (i + 4).clamp(0, digits.length)));
-    }
-    return groups.join(' ');
-  }
-
-  /// Formats raw digits as "MM/YY".
-  String _formatExpiry(String raw) {
-    final digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.length <= 2) return digits;
-    return '${digits.substring(0, 2)}/${digits.substring(2, digits.length.clamp(0, 4))}';
-  }
-
   Future<void> _saveCard() async {
     if (!_formKey.currentState!.validate()) return;
 
