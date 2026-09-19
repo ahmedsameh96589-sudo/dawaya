@@ -55,7 +55,7 @@ class GoogleAuthService {
     await PushNotificationService.registerTokenWithBackend();
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawayaa')),
+      MaterialPageRoute(builder: (_) => const HomePage(title: 'Dawaya')),
       (route) => false,
     );
 

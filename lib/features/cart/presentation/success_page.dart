@@ -52,7 +52,7 @@ class SuccessPage extends StatelessWidget {
                   onPressed: () {
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute<void>(
-                        builder: (_) => const HomePage(title: 'Dawayaa'),
+                        builder: (_) => const HomePage(title: 'Dawaya'),
                       ),
                       (Route<dynamic> route) => false,
                     );

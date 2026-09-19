@@ -29,7 +29,7 @@ class DawayaaApp extends StatelessWidget {
           valueListenable: _localeController,
           builder: (context, locale, _) {
             return MaterialApp(
-              title: 'Dawayaa',
+              title: 'Dawaya',
               navigatorKey: rootNavigatorKey,
               theme: AppTheme.light,
               debugShowCheckedModeBanner: false,
@@ -51,7 +51,7 @@ class DawayaaApp extends StatelessWidget {
                 '/signup': (context) => const SignUpPage(),
                 '/forget': (context) => const ForgetPasswordScreen(),
                 '/scan': (context) => const ScanPrescriptionScreen(),
-                '/home': (context) => const HomePage(title: 'Dawayaa'),
+                '/home': (context) => const HomePage(title: 'Dawaya'),
               },
             );
           },
